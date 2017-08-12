@@ -22,104 +22,112 @@ namespace BackgroundControl
         public int dwReserved2;
     }
 
+    internal sealed class BackgroundControl
+    {
+        [STAThread]
+        private static void Main()
+        {
+            while (true)
+            {
+                ControlCombos control = new ControlCombos();
+                System.Threading.Thread.Sleep(100);
+            }
+        }
+    }
+
+    internal sealed class ControlCombos
+    {
+        public ControlCombos()
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Controller controller;
+            Stopwatch timer = new Stopwatch();
+            int[] combos = { 0, 0, 0, 0 };
+            string[] comboStrings = { "0", "1", "2", "3" };
+            int combo = 0;
+
+            foreach (string item in comboStrings)
+            {
+                foreach (string button in item.Split('+')) //Find Button Combo that is required
+                {
+                    if (int.TryParse(button, out int oVal))
+                    {
+                        combos[combo] += (int)Math.Pow(2, oVal);
+                    }
+                }
+                combo += 1;
+            }
+            
+            Console.WriteLine($"volumeUpCombo: {combos[0]}  | brightnessUpCombo: {combos[1]}" +
+                              $"\nvolumeDownCombo: {combos[2]} | brightnessDownCombo: {combos[3]}");
+            controller = new Controller(combos);
+
+            while (true)
+            {
+                if (controller.ComboPressed() == -1)
+                {
+                    timer.Restart();
+                }
+                else if (controller.ComboPressed() == 1)
+                {
+                    Console.WriteLine("volume up");
+                    return;
+                }
+                else if (controller.ComboPressed() == 2)
+                {
+                    Console.WriteLine("volume down");
+                    return;
+                }
+                else if (controller.ComboPressed() == 4)
+                {
+                    Console.WriteLine("brightness up");
+                    return;
+                }
+                else if (controller.ComboPressed() == 8)
+                {
+                    Console.WriteLine("brightness down");
+                    return;
+                }
+                else
+                {
+                    Console.WriteLine(controller.ComboPressed());
+                }
+            }
+        }
+    }
+
     internal sealed class Controller
     {
         [DllImport("winmm.dll")]
         internal static extern int joyGetPosEx(int uJoyID, ref JOYINFOEX pji); //Get the state of a controller with their ID
         [DllImport("winmm.dll")]
         public static extern Int32 joyGetNumDevs(); //How many controllers are plugged in
-        
-        private int volCombo;
-        private int briCombo;
+
+        int[] combos;
         private JOYINFOEX state = new JOYINFOEX();
 
-        public Controller(int vc, int bc)
+        public Controller(int[] c)
         {
-            volCombo = vc;
-            briCombo = bc;
+            combos = c;
             state.dwFlags = 128;
             state.dwSize = Marshal.SizeOf(typeof(JOYINFOEX));
         }
-
-        public bool VolComboPressed()
+        
+        public int ComboPressed()
         {
-            for (int i = 0; i < joyGetNumDevs(); i++)
+            for (int controller = 0; controller < joyGetNumDevs(); controller++)
             {
-                joyGetPosEx(i, ref state);
-                if (volCombo == state.dwButtons)
+                joyGetPosEx(controller, ref state);
+                for (int combo = 0; combo < 4; combo++)
                 {
-                    Console.WriteLine($"combo: {volCombo} state.dwButtons: {state.dwButtons}");
-                    return true;
+                    if (combos[combo] == state.dwButtons)
+                    {
+                        //Console.WriteLine($"combo: {combos[combo]} state.dwButtons: {state.dwButtons}");
+                        return combos[combo];
+                    }
                 }
             }
-            return false;
-        }
-
-        public bool BriComboPressed()
-        {
-            for (int i = 0; i < joyGetNumDevs(); i++)
-            {
-                joyGetPosEx(i, ref state);
-                if (briCombo == state.dwButtons)
-                {
-                    Console.WriteLine($"combo: {briCombo} state.dwButtons: {state.dwButtons}");
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    internal sealed class BackgroundControl
-    {
-        [STAThread]
-        private static void Main()
-        {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Controller controller;
-            Stopwatch timer = new Stopwatch();
-            float time = 1;
-            int volumeCombo = 0;
-            int brightnessCombo = 0;
-            string volumeString = "4+5"; //TODO find out why this continues to call after buttons are no longer pressed
-            string brightnessString = "6+7";
-            int oVal = 0;
-
-            foreach (var b in volumeString.Split('+')) //Find Button Combo that is required
-            {
-                if (int.TryParse(b, out oVal))
-                {
-                    volumeCombo += (int)Math.Pow(2, oVal);
-                }
-                oVal = 0;
-            }
-
-            foreach (var b in brightnessString.Split('+')) //Find Button Combo that is required
-            {
-                if (int.TryParse(b, out oVal))
-                {
-                    brightnessCombo += (int)Math.Pow(2, oVal);
-                }
-                oVal = 0;
-            }
-
-            Console.WriteLine($"volumeCombo: {volumeCombo} | brightnessCombo: {brightnessCombo}");
-            controller = new Controller(volumeCombo, brightnessCombo); //Controller class that handles button presses when checked
-
-            while (true)
-            {
-                if (!controller.VolComboPressed() && !controller.BriComboPressed())
-                {
-                    timer.Restart();
-                }
-                else if (timer.ElapsedMilliseconds >= time)
-                {
-                    Console.WriteLine("combo pressed");
-                    //return;
-                }
-
-                System.Threading.Thread.Sleep(35);
-            }
+            return -1;
         }
     }
 }
