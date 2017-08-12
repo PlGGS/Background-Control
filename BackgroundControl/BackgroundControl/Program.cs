@@ -128,18 +128,25 @@ namespace BackgroundControl
         
         public int ComboPressed()
         {
-            for (int controller = 0; controller < joyGetNumDevs(); controller++)
+            try
             {
-                joyGetPosEx(controller, ref state);
-                for (int combo = 0; combo < 4; combo++)
+                for (int controller = 0; controller < joyGetNumDevs(); controller++)
                 {
-                    if (combos[combo] == state.dwButtons)
+                    joyGetPosEx(controller, ref state);
+                    for (int combo = 0; combo < 4; combo++)
                     {
-                        //Console.WriteLine($"combo: {combos[combo]} state.dwButtons: {state.dwButtons}");
-                        return combos[combo];
+                        if (combos[combo] == state.dwButtons)
+                        {
+                            return combos[combo];
+                        }
                     }
                 }
             }
+            catch (Exception)
+            {
+                Console.WriteLine("Failed to run command. Data was corrupt");
+            }
+
             return -1;
         }
     }
