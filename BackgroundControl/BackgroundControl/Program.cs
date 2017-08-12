@@ -37,6 +37,16 @@ namespace BackgroundControl
 
     internal sealed class ControlCombos
     {
+        [DllImport("user32", CharSet = CharSet.Auto)]
+        static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32")]
+        static extern IntPtr GetConsoleWindow();
+
+        const UInt32 WM_APPCOMMAND = 0x0319;
+        const UInt32 APPCOMMAND_VOLUME_DOWN = 9;
+        const UInt32 APPCOMMAND_VOLUME_UP = 10;
+
         public ControlCombos()
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -45,6 +55,7 @@ namespace BackgroundControl
             int[] combos = { 0, 0, 0, 0 };
             string[] comboStrings = { "0", "1", "2", "3" };
             int combo = 0;
+
 
             foreach (string item in comboStrings)
             {
@@ -70,11 +81,13 @@ namespace BackgroundControl
                 }
                 else if (controller.ComboPressed() == 1)
                 {
+                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_UP << 16));
                     Console.WriteLine("volume up");
                     return;
                 }
                 else if (controller.ComboPressed() == 2)
                 {
+                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_DOWN << 16));
                     Console.WriteLine("volume down");
                     return;
                 }
