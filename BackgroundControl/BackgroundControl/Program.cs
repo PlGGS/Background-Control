@@ -28,9 +28,12 @@ namespace BackgroundControl
         [STAThread]
         private static void Main()
         {
+            byte brightness = 100;
+
             while (true)
             {
-                ControlCombos control = new ControlCombos();
+                ControlCombos control = new ControlCombos(brightness);
+                brightness = control.GetBrightness();
                 System.Threading.Thread.Sleep(100);
             }
         }
@@ -47,6 +50,8 @@ namespace BackgroundControl
         const UInt32 WM_APPCOMMAND = 0x0319;
         const UInt32 APPCOMMAND_VOLUME_DOWN = 9;
         const UInt32 APPCOMMAND_VOLUME_UP = 10;
+
+        byte brightness = 100;
 
         /// <summary>
         /// https://stackoverflow.com/questions/8194006/c-sharp-setting-screen-brightness-windows-7
@@ -70,7 +75,12 @@ namespace BackgroundControl
             }
         }
 
-        public ControlCombos()
+        internal byte GetBrightness()
+        {
+            return brightness;
+        }
+
+        public ControlCombos(byte b)
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Controller controller;
@@ -78,9 +88,8 @@ namespace BackgroundControl
             int[] combos = { 0, 0, 0, 0 };
             string[] comboStrings = { "0", "1", "2", "3" };
             int combo = 0;
-            byte brightness = 100;
-
-
+            brightness = b;
+            
             foreach (string item in comboStrings)
             {
                 foreach (string button in item.Split('+')) //Find Button Combo that is required
@@ -119,9 +128,10 @@ namespace BackgroundControl
                 {
                     if (Process.GetProcessesByName("winmgmt").Length != 0)
                     {
-                        if (brightness <= 100)
+                        if (brightness < 100)
                         {
-                            SetBrightness(brightness += 10);
+                            brightness += 10;
+                            SetBrightness(brightness);
                         }
                         Console.WriteLine("brightness up");
                     }
@@ -135,15 +145,16 @@ namespace BackgroundControl
                 {
                     if (Process.GetProcessesByName("winmgmt").Length != 0)
                     {
-                        if (brightness >= 0)
+                        if (brightness > 0)
                         {
-                            SetBrightness(brightness -= 10);
+                            brightness -= 10;
+                            SetBrightness(brightness);
                         }
                         Console.WriteLine("brightness down");
                     }
                     else
                     {
-                        Console.WriteLine("wmi process not running");
+                        Console.WriteLine("wmi service not running");
                     }
                     return;
                 }
