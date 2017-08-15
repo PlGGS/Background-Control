@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Management;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -47,6 +48,28 @@ namespace BackgroundControl
         const UInt32 APPCOMMAND_VOLUME_DOWN = 9;
         const UInt32 APPCOMMAND_VOLUME_UP = 10;
 
+        /// <summary>
+        /// https://stackoverflow.com/questions/8194006/c-sharp-setting-screen-brightness-windows-7
+        /// </summary>
+        /// <param name="targetBrightness"></param>
+        static void SetBrightness(byte targetBrightness)
+        {
+            ManagementScope scope = new ManagementScope("root\\WMI");
+            SelectQuery query = new SelectQuery("WmiMonitorBrightnessMethods");
+            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher(scope, query))
+            {
+                using (ManagementObjectCollection objectCollection = searcher.Get())
+                {
+                    foreach (ManagementObject mObj in objectCollection)
+                    {
+                        mObj.InvokeMethod("WmiSetBrightness",
+                            new Object[] { UInt32.MaxValue, targetBrightness });
+                        break;
+                    }
+                }
+            }
+        }
+
         public ControlCombos()
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -55,6 +78,7 @@ namespace BackgroundControl
             int[] combos = { 0, 0, 0, 0 };
             string[] comboStrings = { "0", "1", "2", "3" };
             int combo = 0;
+            byte brightness = 100;
 
 
             foreach (string item in comboStrings)
@@ -79,26 +103,48 @@ namespace BackgroundControl
                 {
                     timer.Restart();
                 }
-                else if (controller.ComboPressed() == 1)
+                else if (controller.ComboPressed() == combos[0])
                 {
                     SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_UP << 16));
                     Console.WriteLine("volume up");
                     return;
                 }
-                else if (controller.ComboPressed() == 2)
+                else if (controller.ComboPressed() == combos[1])
                 {
                     SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_DOWN << 16));
                     Console.WriteLine("volume down");
                     return;
                 }
-                else if (controller.ComboPressed() == 4)
+                else if (controller.ComboPressed() == combos[2])
                 {
-                    Console.WriteLine("brightness up");
+                    if (Process.GetProcessesByName("winmgmt").Length != 0)
+                    {
+                        if (brightness <= 100)
+                        {
+                            SetBrightness(brightness += 10);
+                        }
+                        Console.WriteLine("brightness up");
+                    }
+                    else
+                    {
+                        Console.WriteLine("wmi service not running");
+                    }
                     return;
                 }
-                else if (controller.ComboPressed() == 8)
+                else if (controller.ComboPressed() == combos[3])
                 {
-                    Console.WriteLine("brightness down");
+                    if (Process.GetProcessesByName("winmgmt").Length != 0)
+                    {
+                        if (brightness >= 0)
+                        {
+                            SetBrightness(brightness -= 10);
+                        }
+                        Console.WriteLine("brightness down");
+                    }
+                    else
+                    {
+                        Console.WriteLine("wmi process not running");
+                    }
                     return;
                 }
                 else
