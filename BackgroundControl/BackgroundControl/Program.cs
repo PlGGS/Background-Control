@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace BackgroundControl
 {
@@ -25,14 +26,34 @@ namespace BackgroundControl
 
     internal sealed class BackgroundControl
     {
+        /// <summary>
+        /// Loops quickly without killing the CPU
+        /// From StackOverflow: https://stackoverflow.com/questions/7402146/cpu-friendly-infinite-loop
+        /// </summary>
         [STAThread]
         private static void Main()
         {
-            while (true)
+            bool createdNew;
+            var waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "CF2D4313-33DE-489D-9721-6AFF69841DEA", out createdNew);
+            var signaled = false;
+
+            if (!createdNew)
             {
-                ControlCombos control = new ControlCombos();
-                System.Threading.Thread.Sleep(250);
+                waitHandle.Set();
+                return;
             }
+            
+            var timer = new Timer(OnTimerElapsed, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
+            
+            do
+            {
+                signaled = waitHandle.WaitOne(TimeSpan.FromMilliseconds(1000));
+            } while (!signaled);
+        }
+
+        private static void OnTimerElapsed(object state)
+        {
+            ControlCombos control = new ControlCombos();
         }
     }
 
@@ -76,46 +97,43 @@ namespace BackgroundControl
                               $"\nvolumeDownCombo: {combos[2]} | brightnessDownCombo: {combos[3]}");
             controller = new Controller(combos);
 
-            while (true)
+            if (controller.ComboPressed() == -1)
             {
-                if (controller.ComboPressed() == -1)
-                {
-                    timer.Restart();
-                }
-                else if (controller.ComboPressed() == combos[0])
-                {
-                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_UP << 16));
-                    Console.WriteLine("volume up");
-                    return;
-                }
-                else if (controller.ComboPressed() == combos[1])
-                {
-                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_DOWN << 16));
-                    Console.WriteLine("volume down");
-                    return;
-                }
-                else if (controller.ComboPressed() == combos[2])
-                {
-                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_PLAY_PAUSE << 16));
-                    Console.WriteLine("play/pause");
-                    return;
-                }
-                else if (controller.ComboPressed() == combos[3])
-                {
-                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_LAST_SONG << 16));
-                    Console.WriteLine("next");
-                    return;
-                }
-                else if (controller.ComboPressed() == combos[4])
-                {
-                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_NEXT_SONG << 16));
-                    Console.WriteLine("last");
-                    return;
-                }
-                else
-                {
-                    Console.WriteLine(controller.ComboPressed());
-                }
+                timer.Restart();
+            }
+            else if (controller.ComboPressed() == combos[0])
+            {
+                SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_UP << 16));
+                Console.WriteLine("volume up");
+                return;
+            }
+            else if (controller.ComboPressed() == combos[1])
+            {
+                SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_VOLUME_DOWN << 16));
+                Console.WriteLine("volume down");
+                return;
+            }
+            else if (controller.ComboPressed() == combos[2])
+            {
+                SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_PLAY_PAUSE << 16));
+                Console.WriteLine("play/pause");
+                return;
+            }
+            else if (controller.ComboPressed() == combos[3])
+            {
+                SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_LAST_SONG << 16));
+                Console.WriteLine("next");
+                return;
+            }
+            else if (controller.ComboPressed() == combos[4])
+            {
+                SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_NEXT_SONG << 16));
+                Console.WriteLine("last");
+                return;
+            }
+            else
+            {
+                Console.WriteLine(controller.ComboPressed());
             }
         }
     }
