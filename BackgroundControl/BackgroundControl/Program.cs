@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Management;
+using System.Drawing;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -28,13 +28,10 @@ namespace BackgroundControl
         [STAThread]
         private static void Main()
         {
-            byte brightness = 100;
-
             while (true)
             {
-                ControlCombos control = new ControlCombos(brightness);
-                brightness = control.GetBrightness();
-                System.Threading.Thread.Sleep(100);
+                ControlCombos control = new ControlCombos();
+                System.Threading.Thread.Sleep(250);
             }
         }
     }
@@ -50,45 +47,18 @@ namespace BackgroundControl
         const UInt32 WM_APPCOMMAND = 0x0319;
         const UInt32 APPCOMMAND_VOLUME_DOWN = 9;
         const UInt32 APPCOMMAND_VOLUME_UP = 10;
+        const UInt32 APPCOMMAND_PLAY_PAUSE = 14;
+        const UInt32 APPCOMMAND_LAST_SONG = 12;
+        const UInt32 APPCOMMAND_NEXT_SONG = 11;
 
-        byte brightness = 100;
-
-        /// <summary>
-        /// https://stackoverflow.com/questions/8194006/c-sharp-setting-screen-brightness-windows-7
-        /// </summary>
-        /// <param name="targetBrightness"></param>
-        static void SetBrightness(byte targetBrightness)
-        {
-            ManagementScope scope = new ManagementScope("root\\WMI");
-            SelectQuery query = new SelectQuery("WmiMonitorBrightnessMethods");
-            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher(scope, query))
-            {
-                using (ManagementObjectCollection objectCollection = searcher.Get())
-                {
-                    foreach (ManagementObject mObj in objectCollection)
-                    {
-                        mObj.InvokeMethod("WmiSetBrightness",
-                            new Object[] { UInt32.MaxValue, targetBrightness });
-                        break;
-                    }
-                }
-            }
-        }
-
-        internal byte GetBrightness()
-        {
-            return brightness;
-        }
-
-        public ControlCombos(byte b)
+        public ControlCombos()
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Controller controller;
             Stopwatch timer = new Stopwatch();
-            int[] combos = { 0, 0, 0, 0 };
-            string[] comboStrings = { "0", "1", "2", "3" };
+            int[] combos = { 0, 0, 0, 0, 0 }; //vol up, vol down, pause/play, next song, last song
+            string[] comboStrings = { "4+5+8", "4+5+9", "4+5+3", "4+5+6", "4+5+7" };
             int combo = 0;
-            brightness = b;
             
             foreach (string item in comboStrings)
             {
@@ -126,36 +96,20 @@ namespace BackgroundControl
                 }
                 else if (controller.ComboPressed() == combos[2])
                 {
-                    if (Process.GetProcessesByName("winmgmt").Length != 0)
-                    {
-                        if (brightness < 100)
-                        {
-                            brightness += 10;
-                            SetBrightness(brightness);
-                        }
-                        Console.WriteLine("brightness up");
-                    }
-                    else
-                    {
-                        Console.WriteLine("wmi service not running");
-                    }
+                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_PLAY_PAUSE << 16));
+                    Console.WriteLine("play/pause");
                     return;
                 }
                 else if (controller.ComboPressed() == combos[3])
                 {
-                    if (Process.GetProcessesByName("winmgmt").Length != 0)
-                    {
-                        if (brightness > 0)
-                        {
-                            brightness -= 10;
-                            SetBrightness(brightness);
-                        }
-                        Console.WriteLine("brightness down");
-                    }
-                    else
-                    {
-                        Console.WriteLine("wmi service not running");
-                    }
+                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_LAST_SONG << 16));
+                    Console.WriteLine("next");
+                    return;
+                }
+                else if (controller.ComboPressed() == combos[4])
+                {
+                    SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_NEXT_SONG << 16));
+                    Console.WriteLine("last");
                     return;
                 }
                 else
@@ -190,7 +144,7 @@ namespace BackgroundControl
                 for (int controller = 0; controller < joyGetNumDevs(); controller++)
                 {
                     joyGetPosEx(controller, ref state);
-                    for (int combo = 0; combo < 4; combo++)
+                    for (int combo = 0; combo < 5; combo++)
                     {
                         if (combos[combo] == state.dwButtons)
                         {
