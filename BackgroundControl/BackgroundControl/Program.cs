@@ -31,11 +31,11 @@ namespace BackgroundControl
         /// From StackOverflow: https://stackoverflow.com/questions/7402146/cpu-friendly-infinite-loop
         /// </summary>
         [STAThread]
-        private static void Main()
+        private static void Main() //TODO figure out why this is failing after a few minutes
         {
-            bool createdNew;
-            var waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "CF2D4313-33DE-489D-9721-6AFF69841DEA", out createdNew);
-            var signaled = false;
+            EventWaitHandle waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "CF2D4313-33DE-489D-9721-6AFF69841DEA", out bool createdNew);
+            bool signaled = false;
+            int count = 0;
 
             if (!createdNew)
             {
@@ -43,12 +43,13 @@ namespace BackgroundControl
                 return;
             }
             
-            var timer = new Timer(OnTimerElapsed, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
-            
-            do
+            var timer = new Timer(OnTimerElapsed, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(200));
+
+            while (!signaled)
             {
+                Console.WriteLine(count++);
                 signaled = waitHandle.WaitOne(TimeSpan.FromMilliseconds(1000));
-            } while (!signaled);
+            }
         }
 
         private static void OnTimerElapsed(object state)
@@ -93,8 +94,6 @@ namespace BackgroundControl
                 combo += 1;
             }
             
-            Console.WriteLine($"volumeUpCombo: {combos[0]}  | brightnessUpCombo: {combos[1]}" +
-                              $"\nvolumeDownCombo: {combos[2]} | brightnessDownCombo: {combos[3]}");
             controller = new Controller(combos);
 
             if (controller.ComboPressed() == -1)
