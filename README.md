@@ -1,5 +1,5 @@
 # Background-Control
-Controller quick toggles for audio and music control.
+Xinput controller quick toggles for Windows audio and music control.
 
 -------------------------------------------------
 
