@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -26,6 +25,7 @@ namespace BackgroundControl
 
     internal sealed class BackgroundControl
     {
+
         /// <summary>
         /// Loops quickly without killing the CPU
         /// From StackOverflow: https://stackoverflow.com/questions/7402146/cpu-friendly-infinite-loop
@@ -33,9 +33,10 @@ namespace BackgroundControl
         [STAThread]
         private static void Main() //TODO figure out why this is failing after a few minutes
         {
+            Console.WriteLine($"Volume Up: In on left stick | Volume Down: In on right stick\n" +
+                $"Play/Pause: Y | Last Song: Back | Next Song: Start");
             EventWaitHandle waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "CF2D4313-33DE-489D-9721-6AFF69841DEA", out bool createdNew);
             bool signaled = false;
-            int count = 0;
 
             if (!createdNew)
             {
@@ -43,12 +44,11 @@ namespace BackgroundControl
                 return;
             }
             
-            var timer = new Timer(OnTimerElapsed, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(200));
+            var timer = new Timer(OnTimerElapsed, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(150));
 
             while (!signaled)
             {
-                Console.WriteLine(count++);
-                signaled = waitHandle.WaitOne(TimeSpan.FromMilliseconds(1000));
+                signaled = waitHandle.WaitOne(200);
             }
         }
 
@@ -78,8 +78,8 @@ namespace BackgroundControl
             Console.ForegroundColor = ConsoleColor.Green;
             Controller controller;
             Stopwatch timer = new Stopwatch();
-            int[] combos = { 0, 0, 0, 0, 0 }; //vol up, vol down, pause/play, next song, last song
-            string[] comboStrings = { "4+5+8", "4+5+9", "4+5+3", "4+5+6", "4+5+7" };
+            int[] combos = { 0, 0, 0, 0, 0, 0 }; //vol up, vol down, pause/play, next song, last song
+            string[] comboStrings = { "4+5+8", "4+5+9", "4+5+3", "4+5+6", "4+5+7", "4+5+2" };
             int combo = 0;
             
             foreach (string item in comboStrings)
@@ -121,19 +121,28 @@ namespace BackgroundControl
             else if (controller.ComboPressed() == combos[3])
             {
                 SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_LAST_SONG << 16));
-                Console.WriteLine("next");
+                Console.WriteLine("last");
                 return;
             }
             else if (controller.ComboPressed() == combos[4])
             {
                 SendMessage(GetConsoleWindow(), WM_APPCOMMAND, GetConsoleWindow(), new IntPtr(APPCOMMAND_NEXT_SONG << 16));
-                Console.WriteLine("last");
+                Console.WriteLine("next");
+                return;
+            }
+            else if (controller.ComboPressed() == combos[5])
+            {
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine($"Volume Up: In on left stick | Volume Down: In on right stick\n" +
+                $"Play/Pause: Y | Last Song: Back | Next Song: Start");
                 return;
             }
             else
             {
                 Console.WriteLine(controller.ComboPressed());
             }
+
+            return;
         }
     }
 
@@ -161,7 +170,7 @@ namespace BackgroundControl
                 for (int controller = 0; controller < joyGetNumDevs(); controller++)
                 {
                     joyGetPosEx(controller, ref state);
-                    for (int combo = 0; combo < 5; combo++)
+                    for (int combo = 0; combo < 6; combo++)
                     {
                         if (combos[combo] == state.dwButtons)
                         {
